@@ -27,11 +27,11 @@ class CRequestTracker;
 class CNode;
 
 // Pandacoin goes PoS at this block - supply will be about 32B coins
-static const int MID_POW_BLOCK = 80; // ~2 weeks
-static const int MID2_POW_BLOCK = 85; // ~20 Days
-static const int MID3_POW_BLOCK = 90; // ~20 Days
-static const int MID4_POW_BLOCK = 100; // ~20 Days
-static const int LAST_POW_BLOCK = 120; // ~6 weeks
+static const int LAST_POW_BLOCK = 1020; // ~2 weeks
+static const int MID_POW_BLOCK = 1050; // ~20 Days
+static const int LAST2_POW_BLOCK = 1080; // ~20 Days
+static const int MID2_POW_BLOCK = 1100; // ~20 Days
+static const int LAST3_POW_BLOCK = 1130; // ~6 weeks
 
 static const unsigned int MAX_BLOCK_SIZE = 1000000;
 static const unsigned int MAX_BLOCK_SIZE_GEN = MAX_BLOCK_SIZE/4;
@@ -43,10 +43,10 @@ static const unsigned int MAX_ORPHAN_TRANSACTIONS = MAX_BLOCK_SIZE/100;
 static const unsigned int MAX_INV_SZ = 50000;
 static const int64_t MIN_TX_FEE = 1000;
 static const int64_t MIN_RELAY_TX_FEE = MIN_TX_FEE;
-static const int64_t DUST_SOFT_LIMIT = 0.0000001 * COIN;
-static const int64_t DUST_HARD_LIMIT = 0.00000001 * COIN;
+static const int64_t DUST_SOFT_LIMIT = 0.0000001 * COIN; // 0.0000001 KSC
+static const int64_t DUST_HARD_LIMIT = 0.00000001 * COIN; // 0.00000001 KSC 
 static const int64_t MAX_MONEY = 1001 * COIN;
-static const int64_t COIN_YEAR_REWARD = 2.5 * CENT;
+static const int64_t COIN_YEAR_REWARD = 1000 * CENT;
 inline bool MoneyRange(int64_t nValue) { return (nValue >= 0 && nValue <= MAX_MONEY); }
 static const unsigned int LOCKTIME_THRESHOLD = 500000000; // Tue Nov  5 00:53:20 1985 UTC
 

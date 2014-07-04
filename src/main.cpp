@@ -37,12 +37,14 @@ libzerocoin::Params* ZCParams;
 
 CBigNum bnProofOfWorkLimit(~uint256(0) >> 20); // "standard" scrypt target limit for proof of work, results with 0,000244140625 proof-of-work difficulty
 CBigNum bnProofOfStakeLimit(~uint256(0) >> 20);
+CBigNum bnProofOfStakeLimitAfterFork(~uint256(0) >> 12); // allow 256 times lower stake limit after fork
+unsigned int forkNum = 960;
 CBigNum bnProofOfWorkLimitTestNet(~uint256(0) >> 20);
 
 static const int64_t nTargetTimespan = 600; // Pandacoin: every 4 hours
 unsigned int nTargetSpacing = 101; // 1 minute
 static const int64_t nInterval = nTargetTimespan / nTargetSpacing;
-unsigned int nStakeMinAge = 1 * 60 * 60; // 8 hours
+unsigned int nStakeMinAge = 8 * 60 * 60; // 8 hours
 unsigned int nStakeMaxAge = 2592000; // 30 days
 unsigned int nModifierInterval = 10 * 60; // time to elapse before new modifier is computed
 
@@ -545,15 +547,14 @@ int64_t CTransaction::GetMinFee(unsigned int nBlockSize, enum GetMinFee_mode mod
     {
         if (nBlockSize == 1)
         {
-            // Transactions under 10K are free
-            // (about 4500bc if made of 50bc inputs)
-            if (nBytes < 10000)
+            // Transactions under 5K are free
+            if (nBytes < 5000)
                 nMinFee = 0;
         }
         else
         {
             // Free transaction area
-            if (nNewBlockSize < 17000)
+            if (nNewBlockSize < 27000)
                 nMinFee = 0;
         }
     }
@@ -565,7 +566,7 @@ int64_t CTransaction::GetMinFee(unsigned int nBlockSize, enum GetMinFee_mode mod
             nMinFee += nBaseFee;
 
     // Raise the price as the block approaches full
-    if (nBlockSize != 1 && nNewBlockSize >= MAX_BLOCK_SIZE_GEN/4)
+    if (nBlockSize != 1 && nNewBlockSize >= MAX_BLOCK_SIZE_GEN/2)
     {
         if (nNewBlockSize >= MAX_BLOCK_SIZE_GEN)
             return MAX_MONEY;
@@ -848,7 +849,7 @@ int CMerkleTx::GetBlocksToMaturity() const
     if (!(IsCoinBase() || IsCoinStake()))
         return 0;
     int nMaturity = IsCoinBase() ? nCoinbaseMaturity : nCoinstakeMaturity;
-    return max(0, (nMaturity+2) - GetDepthInMainChain());
+    return max(0, (nMaturity+20) - GetDepthInMainChain());
 }
 
 
@@ -1017,7 +1018,7 @@ int64_t GetProofOfWorkReward(int nHeight, int64_t nFees, uint256 prevHash)
 
 	}
 
-	if(nHeight < 50)
+	if(nHeight < 1000)
 
     {
 
@@ -1032,14 +1033,7 @@ int64_t GetProofOfWorkReward(int nHeight, int64_t nFees, uint256 prevHash)
        nSubsidy = 10.009001019 * COIN;
 
 	}
-   
-     if(nHeight == 54)
 
-    {
-
-       nSubsidy = 10.009001019 * COIN;
-
-	}
     if(nHeight == 1001) //
 
     {
@@ -1353,10 +1347,15 @@ unsigned int static GetNextWorkRequired_V2(const CBlockIndex* pindexLast)
 
 unsigned int GetNextWorkRequired(const CBlockIndex* pindexLast, bool fProofOfStake)
 {
-    CBigNum bnTargetLimit = bnProofOfWorkLimit;
-
-    if(fProofOfStake)
-    {
+    CBigNum bnTargetLimit;
+    if (fProofOfStake) {
+       if (pindexLast->nHeight > forkNum)
+            bnTargetLimit = bnProofOfStakeLimitAfterFork;
+        else
+            bnTargetLimit = fProofOfStake;
+    } else {
+       bnTargetLimit = bnProofOfWorkLimit;
+ 
         const CBlockIndex* pindexPrev = GetLastBlockIndex(pindexLast, fProofOfStake);
         if (pindexPrev->pprev == NULL)
             return bnTargetLimit.GetCompact(); // first block
@@ -1387,7 +1386,7 @@ unsigned int GetNextWorkRequired(const CBlockIndex* pindexLast, bool fProofOfSta
             if (pindexLast->nHeight+1 >= 5) { DiffMode = 2; }
     }
     else {
-            if (pindexLast->nHeight+1 >= 65000) { DiffMode = 2; }
+            if (pindexLast->nHeight+1 >= 950) { DiffMode = 2; }
     }
 
     if (DiffMode == 1)
@@ -2417,18 +2416,18 @@ bool CBlock::AcceptBlock()
     int nHeight = pindexPrev->nHeight+1;
 
     // HARD FORK: switch to version 3 starting from PoS
-    if (nHeight > LAST_POW_BLOCK && nVersion < 3)
+    if (nHeight > LAST3_POW_BLOCK && nVersion < 3)
         return DoS(100, error("AcceptBlock() : reject version <3 block at height %d", nHeight));
-    if (nHeight <= LAST_POW_BLOCK && nVersion > 2)
+    if (nHeight <= LAST3_POW_BLOCK && nVersion > 2)
         return DoS(100, error("AcceptBlock() : reject version >2 block at height %d", nHeight));
         
-    if (IsProofOfWork() && nHeight > MID_POW_BLOCK && nHeight < MID2_POW_BLOCK)
+    if (IsProofOfWork() && nHeight > LAST_POW_BLOCK && nHeight < MID_POW_BLOCK)
         return DoS(100, error("AcceptBlock() : reject proof-of-work at height %d", nHeight));
 
-    if (IsProofOfWork() && nHeight > MID3_POW_BLOCK && nHeight < MID4_POW_BLOCK)
+    if (IsProofOfWork() && nHeight > LAST2_POW_BLOCK && nHeight < MID2_POW_BLOCK)
         return DoS(100, error("AcceptBlock() : reject proof-of-work at height %d", nHeight));
 
-    if (IsProofOfWork() && nHeight > LAST_POW_BLOCK)
+    if (IsProofOfWork() && nHeight > LAST3_POW_BLOCK)
         return DoS(100, error("AcceptBlock() : reject proof-of-work at height %d", nHeight));
 
     // Check proof-of-work or proof-of-stake
@@ -2437,7 +2436,7 @@ bool CBlock::AcceptBlock()
 
     // HARD FORK: Check timestamp against prev
     // This would have prevented the KGW time warp...
-    if (nHeight > LAST_POW_BLOCK &&
+    if (nHeight > LAST3_POW_BLOCK &&
       (GetBlockTime() <= pindexPrev->GetPastTimeLimit()
         || FutureDrift(GetBlockTime()) < pindexPrev->GetBlockTime()))
         return error("AcceptBlock() : block's timestamp is too early");
@@ -2480,7 +2479,6 @@ bool CBlock::AcceptBlock()
         strMiscWarning = _("WARNING: syncronized checkpoint violation detected, but skipped!");
 
     // Enforce rule that the coinbase starts with serialized block height
-    // Unfortunately there are bad version 2 blocks in Pandacoin blockchain (e.g. block 6)
     if (nVersion >= 2 && nHeight > 1000)
     {
         CScript expect = CScript() << nHeight;
