@@ -36,9 +36,7 @@ set<pair<COutPoint, unsigned int> > setStakeSeen;
 libzerocoin::Params* ZCParams;
 
 CBigNum bnProofOfWorkLimit(~uint256(0) >> 20); // "standard" scrypt target limit for proof of work, results with 0,000244140625 proof-of-work difficulty
-CBigNum bnProofOfStakeLimit(~uint256(0) >> 20);
-CBigNum bnProofOfStakeLimitAfterFork(~uint256(0) >> 12); // allow 256 times lower stake limit after fork
-unsigned int forkNum = 960;
+CBigNum bnProofOfStakeLimit(~uint256(0) >> 12);
 CBigNum bnProofOfWorkLimitTestNet(~uint256(0) >> 20);
 
 static const int64_t nTargetTimespan = 600; // Pandacoin: every 4 hours
@@ -1347,15 +1345,10 @@ unsigned int static GetNextWorkRequired_V2(const CBlockIndex* pindexLast)
 
 unsigned int GetNextWorkRequired(const CBlockIndex* pindexLast, bool fProofOfStake)
 {
-    CBigNum bnTargetLimit;
+    CBigNum bnTargetLimit = bnProofOfWorkLimit;
+    
     if (fProofOfStake) {
-       if (pindexLast->nHeight > forkNum)
-            bnTargetLimit = bnProofOfStakeLimitAfterFork;
-        else
-            bnTargetLimit = fProofOfStake;
-    } else {
-       bnTargetLimit = bnProofOfWorkLimit;
- 
+    
         const CBlockIndex* pindexPrev = GetLastBlockIndex(pindexLast, fProofOfStake);
         if (pindexPrev->pprev == NULL)
             return bnTargetLimit.GetCompact(); // first block
